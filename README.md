@@ -9,7 +9,7 @@ Questa repository contiene il lavoro sperimentale condotto nel mio lavoro di tes
 
 In questo capitolo verranno mostrati i risultati dall’addestramento di
 un Transformer 200k con l’obiettivo di riprodurre gli esiti ottenuti
-nello studio [Language Modeling is Compression](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind , in particolare gli
+nello studio [Language Modeling is Compression](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind, in particolare gli
 script sono forniti dalla [repository](https://github.com/google-deepmind/language_modeling_is_compression), collegata direttamente ad esso.
 L’addestramento è stato reso possibile grazie all’utilizzo del cluster
 universitario Caliban.
@@ -419,7 +419,8 @@ date dagli sviluppatori, ovvero:
 - Eseguire lo script di training e successivamente di compressione come
   segue:
 
-  \|python train.py \#script per il training\|
+python train.py  # script per il training
+
 
 Come era facilmente prevedibile, l’hardware del mio pc non è risultato
 sufficiente a gestire una tale computazione. Sotto consiglio dei miei
@@ -451,17 +452,14 @@ Ho per cui proceduto a cambiare gli iperparametri di deafult, senza
 modificare il positional_encoding, che nello script fornito è quello
 sinusoidal, descritto anche nel paper originale "Attention is all you
 need" . Ho dunque ripetuto il training col nuovo script con "sinusoidal"
-e non "ROTARY". Al termine di esso la "loss" (o anche perdita) perdita
+e non "ROTARY". Al termine di esso la "loss" (o anche perdita) 
 ammontava a circa  2552  con un tempo di addestramento di oltre  122 
 ore, con convergenza alla loss finale ottenuta intorno alle  100  ore.
 Ho proseguito quindi alla compressione di enwik9, ottenendo il risultato
-mostrato nella figura <a href="#fig:log" data-reference-type="ref"
-data-reference="fig:log">1.1</a>.
+mostrato nella figura: 
 
-<figure id="fig:log">
-<img src="immagini/log enwik9 top.png" style="width:100.0%" />
-<figcaption>Tasso di compressione di enwik9</figcaption>
-</figure>
+![Tasso di compressione di enwik9](log%20enwik9%20top.png)
+
 
 Ovvero il modello comprime 3.85 chunks al secondo, ottenendo in 35 ore
 circa il tasso di compressione chunked del 23.5 per cento. Per cui un
