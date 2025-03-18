@@ -10,7 +10,7 @@ Questa repository contiene il lavoro sperimentale condotto nel mio lavoro di tes
 In questo capitolo verranno mostrati i risultati dall’addestramento di
 un Transformer 200k con l’obiettivo di riprodurre gli esiti ottenuti
 nello studio [Language Modeling is Compression](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind , in particolare gli
-script sono forniti dalla [repository] (https://github.com/google-deepmind/language_modeling_is_compression), collegata direttamente ad esso.
+script sono forniti dalla [repository](https://github.com/google-deepmind/language_modeling_is_compression), collegata direttamente ad esso.
 L’addestramento è stato reso possibile grazie all’utilizzo del cluster
 universitario Caliban.
 
