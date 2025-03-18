@@ -9,7 +9,7 @@ Questa repository contiene il lavoro sperimentale condotto nel mio lavoro di tes
 
 In questo capitolo verranno mostrati i risultati dall’addestramento di
 un Transformer 200k con l’obiettivo di riprodurre gli esiti ottenuti
-nello studio Language Modeling is Compression [Studio](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind , in particolare gli
+nello studio [Language Modeling is Compression](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind , in particolare gli
 script sono forniti dalla [repository] (https://github.com/google-deepmind/language_modeling_is_compression), collegata direttamente ad esso.
 L’addestramento è stato reso possibile grazie all’utilizzo del cluster
 universitario Caliban.
@@ -29,35 +29,36 @@ Le operazioni principali per ricreare il caso di studio sono tre:
 ## Panoramica
 
 La repository si compone di 11 script in Python. Troviamo nella
-cartella *compressor* $4$ file: **compressor.py**, **flac.py**,
+cartella *compressor* 4 file: **compressor.py**, **flac.py**,
 **language_model.py** e **png.py**. Lo script **compressor.py**
 definisce un’interfaccia per diversi tipi di compressori. Importa vari
 algoritmi di compressione, tra cui FLAC, gzip, LZMA e quello basato sul
 modello, successivamente li organizza in categorie "classical" e
-"arithmetic_coding". Il protocollo Compressor specifica un’interfaccia
+"arithmetic_coding". Il protocollo `Compressor` specifica un’interfaccia
 callable per le funzioni di compressione, mentre il dizionario
-COMPRESS_FN_DICT mappa i nomi dei compressori alle loro rispettive
+`COMPRESS_FN_DICT` mappa i nomi dei compressori alle loro rispettive
 funzioni di compressione.
 
-<div class="mintedbox">
+```python
+class Compressor(Protocol):
 
-python class Compressor(Protocol):
+    def __call__(self, data: bytes, *args, **kwargs) -> bytes | tuple[bytes, int]:
+        """Returns the compressed version of ‘data‘, with optional padded bits."""
 
-def \_\_call\_\_(self, data: bytes, \*args, \*\*kwargs) -\> bytes \|
-tuple\[bytes, int\]: """Returns the compressed version of ‘data‘, with
-optional padded bits."""
+COMPRESSOR_TYPES = {
+    'classical': ['flac', 'gzip', 'lzma', 'png'],
+    'arithmetic_coding': ['language_model'],
+}
 
-COMPRESSOR_TYPES = ’classical’: \[’flac’, ’gzip’, ’lzma’, ’png’\],
-’arithmetic_coding’: \[’language_model’\],
+COMPRESS_FN_DICT: Mapping[str, Compressor] = {
+    'flac': flac.compress,
+    'gzip': functools.partial(gzip.compress, compresslevel=9),
+    'language_model': language_model.compress,
+    'lzma': lzma.compress,
+    'png': png.compress,
+}
 
-COMPRESS_FN_DICT: Mapping\[str, Compressor\] = ’flac’: flac.compress,
-’gzip’: functools.partial(gzip.compress, compresslevel=9),
-’language_model’: language_model.compress, ’lzma’: lzma.compress, ’png’:
-png.compress,
-
-</div>
-
-Le ulteriori $3$ diciture rappresentano le implementazioni degli
+Le ulteriori 3 diciture rappresentano le implementazioni degli
 algoritmi di compressione specificati: **flac.py** per i file audio,
 **png.py** per il suono e **language_model.py** per utilizzare il
 modello con la codifica aritmetica. Ci concentreremo nella descrizione
@@ -76,14 +77,17 @@ di chunks in cui è diviso enwik9, la dimensione di essi, la taglia
 dell’alfabeto usato dal modello e la precisione della codifica
 aritmetica.
 
-<div class="mintedbox">
 
-python NUM_CHUNKS = 488281 CHUNK_SIZE_BYTES = 2048 CHUNK_SHAPE_2D = (32,
-64) ALPHABET_SIZE = 256 NUM_CHUNKS_CALGARY = 957
 
-ARITHMETIC_CODER_BASE = 2 ARITHMETIC_CODER_PRECISION = 32
+```python
+ NUM_CHUNKS = 488281
+CHUNK_SIZE_BYTES = 2048
+CHUNK_SHAPE_2D = (32,64)
+ALPHABET_SIZE = 256
+NUM_CHUNKS_CALGARY = 957
+ARITHMETIC_CODER_BASE = 2
+ARITHMETIC_CODER_PRECISION = 32
 
-</div>
 
 Un ulteriore codice di importanza cruciale è **data_loader.py**, esso
 definisce degli iteratori per i dataset che verranno utilizzati sia nel
@@ -94,21 +98,28 @@ definite in **costants.py**. Dopo aver scaricato enwik9, viene definita
 una list di chunk, dove si appenderanno ognuno dei chunk di enwik9
 iterati.
 
-<div class="mintedbox">
+```python
+def get_enwik9_iterator(
+    num_chunks: int = constants.NUM_CHUNKS,
+    sequence_length: int = constants.CHUNK_SIZE_BYTES,
+) -> Iterator[bytes]:
+    """Returns an iterator for enwik9 data."""
+    
+    if not os.path.exists('enwik9'):  # Downloading and extracting the dataset.
+        urllib.request.urlretrieve(
+            'https://mattmahoney.net/dc/enwik9.zip',
+            'enwik9.zip',
+        )
+        with zipfile.ZipFile('enwik9.zip', 'r') as zip_ref:
+            zip_ref.extract('enwik9')
 
-python def get_enwik9_iterator( num_chunks: int = constants.NUM_CHUNKS,
-sequence_length: int = constants.CHUNK_SIZE_BYTES, ) -\>
-Iterator\[bytes\]: """Returns an iterator for enwik9 data.""" if not
-os.path.exists(’enwik9’): \# Downloading and extracting the dataset.
-urllib.request.urlretrieve( ’https://mattmahoney.net/dc/enwik9.zip’,
-’enwik9.zip’, ) with zipfile.ZipFile(’enwik9.zip’, ’r’) as zip_ref:
-zip_ref.extract(’enwik9’)
+    all_chunks = []
+    with open('enwik9', 'rb') as file:
+        for _ in range(num_chunks):
+            all_chunks.append(file.read(sequence_length))
+    
+    return iter(all_chunks)
 
-all_chunks = \[\] with open(’enwik9’, ’rb’) as file: for \_ in
-range(num_chunks): all_chunks.append(file.read(sequence_length)) return
-iter(all_chunks)
-
-</div>
 
 Ulteriori codici che meritano una descrizione più dettagliata sono
 **train.py**, che addestra il modello, e **transformer.py** che
@@ -116,21 +127,22 @@ definisce l’architettura del Transformer. Per ultimo troviamo
 **utils.py**, che contiene funzioni importanti per gli script come
 quella che consiste nell’azzerare il bit più significativo per poter
 rendere i caratteri che non lo sono codificabili in ASCII.
+```python
+def zero_most_significant_bit_if_not_ascii_decodable(data: bytes) -> tuple[bytes, int]:
+    """Returns ascii-decodable data & the number of zeroed most significant bits."""
+    
+    masked_bits = 0
+    masked_data = list()
 
-<div class="mintedbox">
+    for byte in data:
+        if chr(byte).isascii():
+            masked_data.append(byte)
+        else:
+            masked_bits += 1
+            masked_data.append(byte & 0x7F)
 
-python
+    return bytes(masked_data), masked_bits
 
-def zero_most_significant_bit_if_not_ascii_decodable( data: bytes, ) -\>
-tuple\[bytes, int\]: """Returns ascii-decodable data & the number of
-zeroed most significant bits. """ masked_bits = 0 masked_data = list()
-
-for byte in data: if chr(byte).isascii(): masked_data.append(byte) else:
-masked_bits += 1 masked_data.append(byte & 0x7F)
-
-return bytes(masked_data), masked_bits
-
-</div>
 
 ### Training
 
@@ -141,66 +153,76 @@ La configurazione viene importata con *TransformerConfig*, fornendo cosi
 gli iperparametri principali come il numero di strati, il numero di
 teste di attenzione e la dimensione degli embedding.
 
-<div class="mintedbox">
+```python
+class TransformerConfig:
+    """Hyperparameters used in the Transformer architectures."""
 
-class TransformerConfig: """Hyperparameters used in the Transformer
-architectures.""" \# Vocabulary size. vocab_size: int \# The dimension
-of the first embedding. embedding_dim: int = 64 \# The number of
-multi-head attention layers. num_layers: int = 4 \# The number of heads
-per layer. num_heads: int = 8 \# The parameter initialization scale for
-the embeddings. emb_init_scale: float = 0.02 \# How much larger the
-hidden layer of the feedforward network should be \# compared to the
-‘embedding_dim‘. widening_factor: int = 4
+    # Vocabulary size.
+    vocab_size: int
 
-</div>
+    # The dimension of the first embedding.
+    embedding_dim: int = 64
+
+    # The number of multi-head attention layers.
+    num_layers: int = 4
+
+    # The number of heads per layer.
+    num_heads: int = 8
+
+    # The parameter initialization scale for the embeddings.
+    emb_init_scale: float = 0.02
+
+    # How much larger the hidden layer of the feedforward network should be
+    # compared to the ‘embedding_dim‘.
+    widening_factor: int = 4
+
 
 L’addestramento inizia con la preparazione del dataset mediante
 l’iteratore di dati per enwik9, contenuto in **dataloader.py**,
 descritto in precedenza.
 
-<div class="mintedbox">
+```python
+data_generator = data_loaders.get_enwik9_iterator(
+    num_chunks=constants.NUM_CHUNKS // 10, 
+    sequence_length=sequence_length,
+)
 
-python data_generator = data_loaders.get_enwik9_iterator(
-num_chunks=constants.NUM_CHUNKS // 10, sequence_length=sequence_length,
-) dataset = list(data_generator)
+dataset = list(data_generator)
 
-</div>
 
 Utilizzando il numero di chunk e la lunghezza delle sequenze
 inizializzate in **constant.py**, definiti per enwik9, dividendo per
-$10$, otteniamo i chunk necessari per l’addestramento su enwik8. La
+10, otteniamo i chunk necessari per l’addestramento su enwik8. La
 funzione di loss (perdita) viene definita in `_make_loss_fn`, che prende
 sia i parametri del modello che le sequenze di input e calcola la
 probabilità condizionata di predizione per ogni token della sequenza. La
 funzione di perdita viene poi usata per aggiornare i parametri del
 modello:
 
-<div class="mintedbox">
+```python
 
-python loss_fn = \_make_loss_fn(model) grad_fn =
-jax.value_and_grad(loss_fn, has_aux=False)
+python loss_fn = \_make_loss_fn(model)
+grad_fn = jax.value_and_grad(loss_fn, has_aux=False)
 
-</div>
+
 
 Vengono definiti inoltre il numero di training steps e la dimensione del
-batch, che di default sono rispettivamente $100$ e $128$. In ogni
+batch, che di default sono rispettivamente 100 e 128. In ogni
 iterazione del training, si seleziona un batch casuale di sequenze dal
 dataset e si calcola la log-loss, con conseguente retropropagazione per
 l’aggiornamento dei parametri.
 
-<div class="mintedbox">
+```python
 
-python params, opt_state, logs = \_update_parameters( params=params,
+params, opt_state, logs = \_update_parameters( params=params,
 opt_state=opt_state, sequences=batch, grad_fn=grad_fn,
 optimizer=optimizer, )
 
-</div>
 
 Al termine del processo di training, il modello salva i parametri in un
 file chiamato **params.npz**, che verrà utilizzato per il calcolo delle
 probabilità, come si vedrà nella successiva sottosezione
-<a href="#compressione" data-reference-type="ref"
-data-reference="compressione">1.2.2</a>.
+
 
 ### Compressione
 
@@ -215,12 +237,12 @@ classi principali sono:
 La funzione **Encoder.encode()**, prende la **PDF** per un simbolo e
 comprime in base alla probabilità.
 
-<div class="mintedbox">
 
-python class Encoder(\_CoderBase): def encode(self, pdf: np.ndarray,
+
+```python
+ class Encoder(\_CoderBase): def encode(self, pdf: np.ndarray,
 symbol: int) -\> None: self.\_process(pdf, symbol)
 
-</div>
 
 **pdf** è l’array di probabilità per ciascun simbolo, **symbol** è il
 carattere da codificare, mappato nell?intervallo corretto in base alla
@@ -233,29 +255,29 @@ recuperati i parametri di addestramento prodotti durante il training. Il
 file **params.npz**, viene caricato attraverso la funzione
 *\_retrieve_model_params()*:
 
-<div class="mintedbox">
 
-python def \_retrieve_model_params() -\> hk.Params: try: with
+
+```python def \_retrieve_model_params() -\> hk.Params: try: with
 np.load(’params.npz’, allow_pickle=True) as data: return key:
 data\[key\].item() for key in data.files except FileNotFoundError as
 exc: raise FileNotFoundError( ’You must train a model first, the
 parameters file params.npz does not’ ’ exist yet.’ ) from exc
 
-</div>
+
 
 Dopo aver recuperato il file di parametri, viene generata la funzione di
 previsione la quale prende la sequenza in input e calcola la
 log-probabilità per ogni simbolo successivo.
 
-<div class="mintedbox">
 
-python def \_retrieve_predict_fn(params: hk.Params) -\>
+
+```python def \_retrieve_predict_fn(params: hk.Params) -\>
 Callable\[\[np.ndarray\], np.ndarray\]: config =
 transformer.TransformerConfig (vocab_size=constants.ALPHABET_SIZE) model
 = hk.transform( functools.partial(transformer.transformer_decoder,
 config=config) ) return lambda x: model.apply(params, None, x)
 
-</div>
+
 
 La funzione *compress()* istanzia: il encoder definito nello script del
 codificatore aritmetico, la funzione di caricamento dei parametri e la
@@ -267,9 +289,9 @@ un ciclo, scorre le probabilità e i simboli comprimendo con
 *encoder.encode()*, facendo sì che poi vengano resituiti i byte
 compressi.
 
-<div class="mintedbox">
 
-python def compress( data: bytes, return_num_padded_bits: bool = False,
+
+```python def compress( data: bytes, return_num_padded_bits: bool = False,
 use_slow_lossless_compression: bool = False, ) -\> bytes \|
 tuple\[bytes, int\]: """Compresses the ‘data‘ using arithmetic coding
 and a pretrained model.
@@ -295,30 +317,29 @@ num_padded_bits = utils.bits_to_bytes(compressed_bits)
 
 return compressed_bytes
 
-</div>
+
 
 La valutazione della compressione avviene con lo script **compress.py**
 dove si va a specificare quale compressore utilizzare, i dati da
 comprimere e il numero di chunk.
 
-<div class="mintedbox">
 
-python \_COMPRESSOR = flags.DEFINE_enum( ’compressor’, ’gzip’,
+
+```python\_COMPRESSOR = flags.DEFINE_enum( ’compressor’, ’gzip’,
 compressor.COMPRESS_FN_DICT.keys(), ’Compressor to use.’, ) \_DATASET =
 flags.DEFINE_enum( ’dataset’, ’enwik9’,
 data_loaders.GET_DATA_GENERATOR_FN_DICT.keys(), ’Dataset to use.’, )
 \_NUM_CHUNKS = flags.DEFINE_integer( ’num_chunks’, constants.NUM_CHUNKS,
 ’Number of chunks.’, )
 
-</div>
+
 
 Vengono definite all’interno dello script sia la valutazione della
 compressione "chunked" che quella "unchunked". La prima è utilizzata per
 valutare il tasso di compressione del modello, in quanto non è possibile
 passare l’intero dataset al compressore data la limitatezza della
 finestra di contesto a 2048 byte del modello, come visto nella
-sottosezione <a href="#2048" data-reference-type="ref"
-data-reference="2048">[2048]</a> del precedente capitolo. La seconda è
+sottosezione del precedente capitolo. La seconda è
 quella utilizzata dai compressori classici che hanno finestre di
 contesto molto ampie e possono quindi processare un numero maggiore di
 dati. Nulla vieta l’utilizzo della valutazione della compressione
@@ -336,9 +357,8 @@ viene poi recuperato appendendolo alla fine della sequenza compressa,
 per tenerne conto nel calcolo del compression rate, che viene stampato
 al termine dell’esecuzione dello script.
 
-<div class="mintedbox">
 
-python def evaluate_compressor_chunked( compress_fn:
+```python def evaluate_compressor_chunked( compress_fn:
 compressor.Compressor, get_data_generator_fn: Callable\[\[\],
 Generator\[bytes, None, None\]\], num_chunks: int,
 count_header_only_once: bool = True, mask_fn: Callable\[\[bytes\],
@@ -365,7 +385,6 @@ num_missed_bits)
 
 return compressed_length / raw_length, running_time
 
-</div>
 
 ## Fase sperimentale
 
@@ -407,23 +426,23 @@ di compressione lasciavano a desiderare. Ciò, dopo riflessione, era
 dovuto al fatto che probabilmente gli iperparametri non fossero quelli
 corretti. Difatti, poi, sono riuscito a scoprire che nella sezione
 issues della repository vi era la configurazione corretta per il
-Transformer da $200$k parametri, fornita dagli stessi sviluppatori:
+Transformer da  200 k parametri, fornita dagli stessi sviluppatori:
 
-<div class="mintedbox">
 
-python "training_steps": "1000000", "batch_size": "32", "seq_length":
+
+```python "training_steps": "1000000", "batch_size": "32", "seq_length":
 "2048", "embedding_dim": "64", "num_heads": "4", "num_layers": "4",
 "positional_encodings": "ROTARY",
 
-</div>
+
 
 Ho per cui proceduto a cambiare gli iperparametri di deafult, senza
 modificare il positional_encoding, che nello script fornito è quello
 sinusoidal, descritto anche nel paper originale "Attention is all you
 need" . Ho dunque ripetuto il training col nuovo script con "sinusoidal"
 e non "ROTARY". Al termine di esso la "loss" (o anche perdita) perdita
-ammontava a circa $2552$ con un tempo di addestramento di oltre $122$
-ore, con convergenza alla loss finale ottenuta intorno alle $100$ ore.
+ammontava a circa  2552  con un tempo di addestramento di oltre  122 
+ore, con convergenza alla loss finale ottenuta intorno alle  100  ore.
 Ho proseguito quindi alla compressione di enwik9, ottenendo il risultato
 mostrato nella figura <a href="#fig:log" data-reference-type="ref"
 data-reference="fig:log">1.1</a>.
@@ -473,7 +492,7 @@ file **train.py** dividendo rispettivamente per 100 e 1000 i chunks di
 enwik9, ottenendo in tal modo i dataset desiderati. Questi, avendo
 dimensioni esigue, hanno bisogno di un *fine-tuning* specifico per poter
 adattare il modello a processare una minor quantità di dati; ho quindi
-ridotto il numero di layer e head a $1$ e i training steps a $100000$.
+ridotto il numero di layer e head a 1 e i training steps a 100000.
 
 ### Compressione del Corpus di Calgary
 
@@ -494,11 +513,11 @@ necessitavano nell’atto di compressione, per tutta la loro dimensione,
 della conversione in questa codifica, facendo così aumentare di molto il
 compression rate. Ho provato quindi a comprimere solamente i 2 maggiori
 file codificati in ASCII, ovvero: BOOK1 e BOOK2, per un totale di
-$1379627$ bytes. Dopo aver modificato l’iteratore e le costanti, potevo
+1379627 bytes. Dopo aver modificato l’iteratore e le costanti, potevo
 procedere alla compressione, tramite cui ho ottenuto i seguenti
 risultati:
 
-<div id="tab:compression_results">
+
 
 | **Dataset** |  **Compressore**   | **Compression Rate (%)** |
 |:-----------:|:------------------:|:------------------------:|
@@ -509,31 +528,28 @@ risultati:
 
 Risultati della compressione sul Calgary Corpus
 
-</div>
+
 
 ### Compressione del Large Corpus
 
 Il Large Corpus è una versione del Canterbury Corpus, una collezione di
-$11$ file, che può essere considerato il successore del Calgary Corpus.
-La versione da me utilizzata contiene invece $3$ file, tra questi vi si
+ 11  file, che può essere considerato il successore del Calgary Corpus.
+La versione da me utilizzata contiene invece  3  file, tra questi vi si
 trova BIBLE.txt, una versione della Bibbia di KingJames, il maggiore in
-dimensione nella raccolta, con $4047392$ bytes. Ovviamente come per il
+dimensione nella raccolta, con  4047392  bytes. Ovviamente come per il
 Corpus Calgary, ho dovuto aggiungere un nuovo iteratore in
 **data_loader.py**, e le costanti dei chunk in cui è suddiviso il
 dataset. I risultati ottenuti sono :
 
-<div id="tab:compression_results_canterbury">
+| **Dataset** |     **Compressore**      | **Compression Rate (%)** |
+|:-----------:|:------------------------:|:------------------------:|
+|    BIBLE    |          gzip            |           29.1           |
+|    BIBLE    | Transformer enwik8       |         **27.1**         |
+|    BIBLE    | Transformer enwik7       |           36.2           |
+|    BIBLE    | Transformer enwik6       |           54.8           |
 
-| **Dataset** |  **Compressore**   | **Compression Rate (%)** |
-|:-----------:|:------------------:|:------------------------:|
-|    BIBLE    |        gzip        |           29.1           |
-|    BIBLE    | Transformer enwik8 |         **27.1**         |
-|    BIBLE    | Transformer enwik7 |           36.2           |
-|    BIBLE    | Transformer enwik6 |           54.8           |
+*Risultati della compressione sul Canterbury Corpus*
 
-Risultati della compressione sul Canterbury Corpus
-
-</div>
 
 ## Analisi dei risultati
 
@@ -556,18 +572,18 @@ anche nuovi dataset di addestramento, e vedere quanto impattano non solo
 sul tasso di compressione ma anche sul tempo di compressione e su quanto
 il modello riesca a generalizzarsi anche su tipi di dati differenti da
 quelli di addestramento. La GPU utilizzata è una NVIDIA A100 80GB, che
-nella scheda tecnica riporta un consumo massimo di $300$W ora, nello
+nella scheda tecnica riporta un consumo massimo di 300W ora, nello
 specifico nel nodo del cluster dove si è effettuato l’ allenamento viene
 fornita circa la metà della sua memoria e il numero degli streaming
-multiprocesssor è pari a $14$ quindi circa $\frac{3}{7}$ del totale. La
+multiprocesssor è pari a 14 quindi circa  \frac{3}{7}  del totale. La
 nostra stima dei consumi energetici per l’addestramento del Transformer
-200k su enwik8 per $122.5$ ore è di circa "$12$ KWh". Per il nostro
+200k su enwik8 per 122.5 ore è di circa "12 KWh". Per il nostro
 modello i costi sono, quindi, molto contenuti nonostante anche
 l’inefficienza riportata in precedenza che ha allungato il tempo di
 addestramento. Discorso differente è per i modelli di grandi dimensioni,
 secondo l’ Artificial Intelligence Index Report 2024 , i costi stimati
-per allenare GPT4 si attestano intorno agli $80$ milioni di dollari e
-per Gemini Ultra si superano i $190$. Per i modelli più recenti invece
+per allenare GPT4 si attestano intorno agli  80  milioni di dollari e
+per Gemini Ultra si superano i 190. Per i modelli più recenti invece
 ancora non sono reperibili dati al riguardo. Inoltre le grandi aziende
 tecnologiche che producono LLM, hanno quasi sempre hardware dedicati e
 chip di loro produzione specifici per questo tipo di applicazione,
