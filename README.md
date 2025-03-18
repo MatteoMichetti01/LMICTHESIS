@@ -1,9 +1,16 @@
+# Compressione dati e connessioni con l'intelligenza artificiale
+
+Questa repository contiene il lavoro sperimentale condotto nel mio lavoro di tesi triennale. Troverete gli script e i pesi ottenuti dall'addestramento del modello oltreché una copia PDF della mia tesi. Questo README è scritto sul terzo capitolo del lavoro, dove troverete una spiegazione esaustiva del funzionamento del modello e dei risultati ottenuti. 
+
+
+
+
 # Sperimentazioni
 
 In questo capitolo verranno mostrati i risultati dall’addestramento di
 un Transformer 200k con l’obiettivo di riprodurre gli esiti ottenuti
-nello studio presentato nel capitolo precedente, in particolare gli
-script sono forniti dalla repository , collegata direttamente ad esso.
+nello studio Language Modeling is Compression [Studio](https://arxiv.org/abs/2309.10668) condotto dal gruppo Google Deep Mind , in particolare gli
+script sono forniti dalla [repository] (https://github.com/google-deepmind/language_modeling_is_compression), collegata direttamente ad esso.
 L’addestramento è stato reso possibile grazie all’utilizzo del cluster
 universitario Caliban.
 
@@ -21,7 +28,7 @@ Le operazioni principali per ricreare il caso di studio sono tre:
 
 ## Panoramica
 
-La repository si compone di $11$ script in Python. Troviamo nella
+La repository si compone di 11 script in Python. Troviamo nella
 cartella *compressor* $4$ file: **compressor.py**, **flac.py**,
 **language_model.py** e **png.py**. Lo script **compressor.py**
 definisce un’interfaccia per diversi tipi di compressori. Importa vari
