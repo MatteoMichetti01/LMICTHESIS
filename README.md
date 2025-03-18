@@ -57,6 +57,7 @@ COMPRESS_FN_DICT: Mapping[str, Compressor] = {
     'lzma': lzma.compress,
     'png': png.compress,
 }
+```
 
 Le ulteriori 3 diciture rappresentano le implementazioni degli
 algoritmi di compressione specificati: **flac.py** per i file audio,
@@ -87,7 +88,7 @@ ALPHABET_SIZE = 256
 NUM_CHUNKS_CALGARY = 957
 ARITHMETIC_CODER_BASE = 2
 ARITHMETIC_CODER_PRECISION = 32
-
+```
 
 Un ulteriore codice di importanza cruciale è **data_loader.py**, esso
 definisce degli iteratori per i dataset che verranno utilizzati sia nel
@@ -119,7 +120,7 @@ def get_enwik9_iterator(
             all_chunks.append(file.read(sequence_length))
     
     return iter(all_chunks)
-
+```
 
 Ulteriori codici che meritano una descrizione più dettagliata sono
 **train.py**, che addestra il modello, e **transformer.py** che
@@ -142,7 +143,7 @@ def zero_most_significant_bit_if_not_ascii_decodable(data: bytes) -> tuple[bytes
             masked_data.append(byte & 0x7F)
 
     return bytes(masked_data), masked_bits
-
+```
 
 ### Training
 
@@ -175,7 +176,7 @@ class TransformerConfig:
     # How much larger the hidden layer of the feedforward network should be
     # compared to the ‘embedding_dim‘.
     widening_factor: int = 4
-
+```
 
 L’addestramento inizia con la preparazione del dataset mediante
 l’iteratore di dati per enwik9, contenuto in **dataloader.py**,
@@ -188,7 +189,7 @@ data_generator = data_loaders.get_enwik9_iterator(
 )
 
 dataset = list(data_generator)
-
+```
 
 Utilizzando il numero di chunk e la lunghezza delle sequenze
 inizializzate in **constant.py**, definiti per enwik9, dividendo per
@@ -203,7 +204,7 @@ modello:
 
 python loss_fn = \_make_loss_fn(model)
 grad_fn = jax.value_and_grad(loss_fn, has_aux=False)
-
+```
 
 
 Vengono definiti inoltre il numero di training steps e la dimensione del
@@ -218,7 +219,7 @@ params, opt_state, logs = \_update_parameters( params=params,
 opt_state=opt_state, sequences=batch, grad_fn=grad_fn,
 optimizer=optimizer, )
 
-
+```
 Al termine del processo di training, il modello salva i parametri in un
 file chiamato **params.npz**, che verrà utilizzato per il calcolo delle
 probabilità, come si vedrà nella successiva sottosezione
@@ -242,7 +243,7 @@ comprime in base alla probabilità.
 ```python
  class Encoder(\_CoderBase): def encode(self, pdf: np.ndarray,
 symbol: int) -\> None: self.\_process(pdf, symbol)
-
+```
 
 **pdf** è l’array di probabilità per ciascun simbolo, **symbol** è il
 carattere da codificare, mappato nell?intervallo corretto in base alla
@@ -257,12 +258,13 @@ file **params.npz**, viene caricato attraverso la funzione
 
 
 
-```python def \_retrieve_model_params() -\> hk.Params: try: with
+```python
+def \_retrieve_model_params() -\> hk.Params: try: with
 np.load(’params.npz’, allow_pickle=True) as data: return key:
 data\[key\].item() for key in data.files except FileNotFoundError as
 exc: raise FileNotFoundError( ’You must train a model first, the
 parameters file params.npz does not’ ’ exist yet.’ ) from exc
-
+```
 
 
 Dopo aver recuperato il file di parametri, viene generata la funzione di
@@ -271,12 +273,13 @@ log-probabilità per ogni simbolo successivo.
 
 
 
-```python def \_retrieve_predict_fn(params: hk.Params) -\>
+```python
+ def \_retrieve_predict_fn(params: hk.Params) -\>
 Callable\[\[np.ndarray\], np.ndarray\]: config =
 transformer.TransformerConfig (vocab_size=constants.ALPHABET_SIZE) model
 = hk.transform( functools.partial(transformer.transformer_decoder,
 config=config) ) return lambda x: model.apply(params, None, x)
-
+```
 
 
 La funzione *compress()* istanzia: il encoder definito nello script del
@@ -291,7 +294,8 @@ compressi.
 
 
 
-```python def compress( data: bytes, return_num_padded_bits: bool = False,
+```python
+ def compress( data: bytes, return_num_padded_bits: bool = False,
 use_slow_lossless_compression: bool = False, ) -\> bytes \|
 tuple\[bytes, int\]: """Compresses the ‘data‘ using arithmetic coding
 and a pretrained model.
@@ -317,7 +321,7 @@ num_padded_bits = utils.bits_to_bytes(compressed_bits)
 
 return compressed_bytes
 
-
+```
 
 La valutazione della compressione avviene con lo script **compress.py**
 dove si va a specificare quale compressore utilizzare, i dati da
@@ -325,14 +329,16 @@ comprimere e il numero di chunk.
 
 
 
-```python\_COMPRESSOR = flags.DEFINE_enum( ’compressor’, ’gzip’,
+```python
+
+\_COMPRESSOR = flags.DEFINE_enum( ’compressor’, ’gzip’,
 compressor.COMPRESS_FN_DICT.keys(), ’Compressor to use.’, ) \_DATASET =
 flags.DEFINE_enum( ’dataset’, ’enwik9’,
 data_loaders.GET_DATA_GENERATOR_FN_DICT.keys(), ’Dataset to use.’, )
 \_NUM_CHUNKS = flags.DEFINE_integer( ’num_chunks’, constants.NUM_CHUNKS,
 ’Number of chunks.’, )
 
-
+```
 
 Vengono definite all’interno dello script sia la valutazione della
 compressione "chunked" che quella "unchunked". La prima è utilizzata per
@@ -358,7 +364,8 @@ per tenerne conto nel calcolo del compression rate, che viene stampato
 al termine dell’esecuzione dello script.
 
 
-```python def evaluate_compressor_chunked( compress_fn:
+```python
+def evaluate_compressor_chunked( compress_fn:
 compressor.Compressor, get_data_generator_fn: Callable\[\[\],
 Generator\[bytes, None, None\]\], num_chunks: int,
 count_header_only_once: bool = True, mask_fn: Callable\[\[bytes\],
@@ -385,6 +392,7 @@ num_missed_bits)
 
 return compressed_length / raw_length, running_time
 
+```
 
 ## Fase sperimentale
 
@@ -415,7 +423,7 @@ date dagli sviluppatori, ovvero:
 
 Come era facilmente prevedibile, l’hardware del mio pc non è risultato
 sufficiente a gestire una tale computazione. Sotto consiglio dei miei
-relatori, ho fatto richiesta per accedere al super computer
+relatori, ho fatto richiesta per accedere al supercomputer
 universitario, Caliban.
 
 ## Sfide e risultati ottenuti
@@ -430,9 +438,12 @@ Transformer da  200 k parametri, fornita dagli stessi sviluppatori:
 
 
 
-```python "training_steps": "1000000", "batch_size": "32", "seq_length":
+```python
+"training_steps": "1000000", "batch_size": "32", "seq_length":
 "2048", "embedding_dim": "64", "num_heads": "4", "num_layers": "4",
 "positional_encodings": "ROTARY",
+
+```
 
 
 
