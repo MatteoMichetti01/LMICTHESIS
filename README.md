@@ -1,6 +1,6 @@
 # Compressione dati e connessioni con l'intelligenza artificiale
 
-Questa repository contiene il lavoro sperimentale condotto nel mio lavoro di tesi triennale. Troverete gli script e i pesi ottenuti dall'addestramento del modello oltreché una copia PDF della mia tesi. Questo README è scritto sul terzo capitolo del lavoro, dove troverete una spiegazione esaustiva del funzionamento del modello e dei risultati ottenuti. 
+Questo repository contiene il lavoro sperimentale condotto nel mio lavoro di tesi triennale. Troverete gli script e i pesi ottenuti dall'addestramento del modello oltreché una copia PDF della mia tesi. Questo README è scritto sul terzo capitolo del lavoro, dove troverete una spiegazione esaustiva del funzionamento del modello e dei risultati ottenuti. 
 
 
 
